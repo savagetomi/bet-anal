@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-4b@#i^1k=akczwlkm(uek!fy3oga)2ooeb-@o*%qurcq+k(bkc
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'https://bet-anal.onrender.com'
+    'bet-anal.onrender.com'
 ]
 
 
