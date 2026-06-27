@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+myenv/
+venv/
+*.egg-info/
+
+# Django
+*.sqlite3
+/media/
+/staticfiles/
+
+# Environment variables - NEVER commit these
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
