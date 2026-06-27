@@ -26,7 +26,9 @@ SECRET_KEY = 'django-insecure-4b@#i^1k=akczwlkm(uek!fy3oga)2ooeb-@o*%qurcq+k(bkc
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'https://bet-anal.onrender.com'
+]
 
 
 # Application definition

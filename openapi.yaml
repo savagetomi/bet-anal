@@ -1,0 +1,201 @@
+openapi: 3.0.0
+info:
+  title: Betting Analysis API
+  version: 1.0.0
+  description: API for personal betting analysis.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local development server
+paths:
+  /user/register/:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /user/login/:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+  /user/profile/{pk}/:
+    get:
+      summary: Get user profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pk
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+  /user/bets/create/:
+    post:
+      summary: Create a new bet
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBetRequest'
+      responses:
+        '201':
+          description: Bet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetResponse'
+  /user/bets/:
+    get:
+      summary: List all bets
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of bets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BetResponse'
+  /user/bets/{pk}/:
+    get:
+      summary: Get individual bet details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pk
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetResponse'
+  /user/rollover/:
+    post:
+      summary: Calculate rollover requirement
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolloverRequest'
+      responses:
+        '200':
+          description: Calculation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolloverResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username, email, first_name, last_name, password]
+      properties:
+        username: {type: string}
+        email: {type: string, format: email}
+        first_name: {type: string}
+        last_name: {type: string}
+        password: {type: string, format: password}
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: {type: string}
+        password: {type: string, format: password}
+    LoginResponse:
+      type: object
+      properties:
+        message: {type: string}
+        access: {type: string}
+        refresh: {type: string}
+        data: { $ref: '#/components/schemas/UserResponse' }
+    UserResponse:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        first_name: {type: string}
+        last_name: {type: string}
+        username: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    CreateBetRequest:
+      type: object
+      required: [stake, game_type]
+      properties:
+        stake: {type: number, format: float}
+        potential_payout: {type: number, format: float}
+        game_type: {type: string}
+        number_of_games: {type: string}
+    BetResponse:
+      type: object
+      properties:
+        id: {type: integer}
+        bet_id: {type: string, format: uuid}
+        stake: {type: number, format: float}
+        potential_payout: {type: number, format: float}
+        game_type: {type: string}
+        number_of_games: {type: string}
+        result: {type: string}
+        profit_loss: {type: string}
+    RolloverRequest:
+      type: object
+      required: [stake, payout, days]
+      properties:
+        stake: {type: number, format: float}
+        payout: {type: number, format: float}
+        days: {type: integer}
+    RolloverResponse:
+      type: object
+      properties:
+        stake: {type: number, format: float}
+        payout: {type: number, format: float}
+        rollover_requirement: {type: number, format: float}
+        daily_rollover: {type: number, format: float}
