@@ -4,16 +4,46 @@ from .serializers import CreateBetSerializer, UserSerializer
 from .models import Bet
 from django.db.models import DecimalField, Sum, Count, Q, F, Value, CharField, When, Case
 # from .services import StakeDataClient
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
 import os
 import math
 
+
 # Create your views here.
+
 class RegisterUser(APIView):
+    @extend_schema(
+    summary="Register a new user",
+    description="Creates a new user account and returns the created user's profile data.",
+    request=UserSerializer,
+    responses={
+        201: inline_serializer(
+            name="RegisterUserResponse",
+            fields={
+                "message": serializers.CharField(),
+                "data": inline_serializer(
+                    name="RegisterUserData",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "email": serializers.EmailField(),
+                        "first_name": serializers.CharField(),
+                        "last_name": serializers.CharField(),
+                        "username": serializers.CharField(),
+                        "created_at": serializers.DateTimeField(),
+                        "updated_at": serializers.DateTimeField(),
+                    }
+                ),
+            }
+        ),
+        400: OpenApiTypes.OBJECT,
+    },
+)
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -35,6 +65,29 @@ class RegisterUser(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginUserView(APIView):
+    @extend_schema(
+    summary="Log in a user",
+    description="Authenticates a user with username and password, returning JWT access and refresh tokens.",
+    request=inline_serializer(
+        name="LoginRequest",
+        fields={
+            "username": serializers.CharField(),
+            "password": serializers.CharField(style={'input_type': 'password'}),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name="LoginResponse",
+            fields={
+                "message": serializers.CharField(),
+                "access": serializers.CharField(),
+                "refresh": serializers.CharField(),
+                "data": UserSerializer(),
+            }
+        ),
+        401: OpenApiTypes.OBJECT,
+    },
+)
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
@@ -55,6 +108,13 @@ class LoginUserView(APIView):
     
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
+    @extend_schema(
+    summary="Get the authenticated user's profile",
+    responses={200: inline_serializer(
+        name="UserProfileResponse",
+        fields={"message": serializers.CharField(), "data": UserSerializer()}
+    )},
+)
     def get(self, request, pk):
         try:
             serializer = UserSerializer(request.user)
@@ -96,7 +156,33 @@ class UserProfileView(APIView):
 
 class CreateBetView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        summary="Create a new bet",
+        description="Creates a bet for the authenticated user. `user` is set automatically from the request and cannot be supplied by the client.",
+        request=CreateBetSerializer,
+        responses={
+            201: inline_serializer(
+                name="CreateBetResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "data": inline_serializer(
+                        name="CreateBetData",
+                        fields={
+                            "id": serializers.IntegerField(),
+                            "bet_id": serializers.UUIDField(),
+                            "stake": serializers.DecimalField(max_digits=10, decimal_places=2),
+                            "potential_payout": serializers.DecimalField(max_digits=10, decimal_places=2),
+                            "game_type": serializers.CharField(),
+                            "number_of_games": serializers.IntegerField(),
+                            "created_at": serializers.DateTimeField(),
+                            "result": serializers.CharField(),
+                        }
+                    ),
+                }
+            ),
+            400: OpenApiTypes.OBJECT,
+        },
+    )
     def post(self, request):
         user = request.user
         serializer = CreateBetSerializer(data=request.data)
@@ -119,7 +205,26 @@ class CreateBetView(APIView):
     
 class UpdateBetView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        summary="Update an existing bet",
+        description=(
+            "Partially updates a bet belonging to the authenticated user, identified by bet_id. "
+            "Note: CreateBetSerializer marks `result` as read-only, so this endpoint currently "
+            "cannot change a bet's result - only fields like stake, game_type, etc. are writable."
+        ),
+        request=CreateBetSerializer,
+        responses={
+            200: inline_serializer(
+                name="UpdateBetResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "data": CreateBetSerializer(),
+                }
+            ),
+            400: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def put(self, request, bet_id):
         try:
             bet = Bet.objects.get(bet_id=bet_id, user=request.user)
@@ -137,7 +242,18 @@ class UpdateBetView(APIView):
     
 class ViewBetDetails(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        summary="List all bets for the authenticated user",
+        responses={
+            200: inline_serializer(
+                name="ViewBetDetailsResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "data": CreateBetSerializer(many=True),
+                }
+            ),
+        },
+    )
     def get(self, request):
         try:
             bet = Bet.objects.filter(user=request.user)
@@ -151,7 +267,19 @@ class ViewBetDetails(APIView):
         
 class ViewIndividualBetDetails(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        summary="Get a single bet by bet_id",
+        responses={
+            200: inline_serializer(
+                name="ViewIndividualBetDetailsResponse",
+                fields={
+                    "message": serializers.CharField(),
+                    "data": CreateBetSerializer(),
+                }
+            ),
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def get(self, request, bet_id):
         try:
             bet = Bet.objects.get(bet_id=bet_id, user=request.user)
@@ -165,7 +293,32 @@ class ViewIndividualBetDetails(APIView):
 
 class BetAnalysisViews(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+    summary="Get aggregated profit/loss analysis",
+    description=(
+        "Returns aggregated betting statistics for the authenticated user: "
+        "total bets, win/loss/pending counts, total amount staked, and net "
+        "profit/loss. Pending bets contribute 0 to profit/loss but their "
+        "stake is still included in total_staked."
+    ),
+    responses={200: inline_serializer(
+        name="BetAnalysisResponse",
+        fields={
+            "message": serializers.CharField(),
+            "data": inline_serializer(
+                name="BetAnalysisData",
+                fields={
+                    "total_bets": serializers.IntegerField(),
+                    "won_bets": serializers.IntegerField(),
+                    "lost_bets": serializers.IntegerField(),
+                    "pending_bets": serializers.IntegerField(),
+                    "total_profit_loss": serializers.DecimalField(max_digits=10, decimal_places=2),
+                    "total_staked": serializers.DecimalField(max_digits=10, decimal_places=2),
+                }
+            ),
+        }
+    )},
+)
     def get(self, request):
         bets= Bet.objects.filter(user=request.user)
         bets=bets.annotate(
@@ -207,7 +360,40 @@ class BetAnalysisViews(APIView):
         
 class RolloverCalculator(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+    summary="Calculate rollover requirement",
+    description=(
+        "Given a stake, a potential payout, and a number of days, calculates "
+        "the overall rollover multiplier and the equivalent required daily "
+        "rollover rate (geometric average)."
+    ),
+    request=inline_serializer(
+        name="RolloverRequest",
+        fields={
+            "stake": serializers.FloatField(),
+            "payout": serializers.FloatField(),
+            "days": serializers.IntegerField(),
+        }
+    ),
+    responses={
+        200: inline_serializer(
+            name="RolloverResponse",
+            fields={
+                "message": serializers.CharField(),
+                "data": inline_serializer(
+                    name="RolloverData",
+                    fields={
+                        "stake": serializers.FloatField(),
+                        "payout": serializers.FloatField(),
+                        "rollover_requirement": serializers.FloatField(),
+                        "daily_rollover": serializers.FloatField(),
+                    }
+                ),
+            }
+        ),
+        400: OpenApiTypes.OBJECT,
+    },
+)
     def post(self, request):
         stake = request.data.get('stake')
         payout = request.data.get('payout')

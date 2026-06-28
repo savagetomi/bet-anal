@@ -27,6 +27,7 @@ SECRET_KEY = 'django-insecure-4b@#i^1k=akczwlkm(uek!fy3oga)2ooeb-@o*%qurcq+k(bkc
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    '127.0.0.1',
     'bet-anal.onrender.com'
 ]
 
@@ -42,7 +43,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'user'
+    'user',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
 ]
 
 AUTH_USER_MODEL='user.CustomUser'
@@ -80,8 +83,33 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    'DEFAULT_SCHEMA_CLASS': 
+        'drf_spectacular.openapi.AutoSchema',
 }
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Bet Analysis API',
+    'DESCRIPTION': 'A REST API for managing bets and betting analytics.',
+    'VERSION': '1.0.0',
+
+    'COMPONENT_SPLIT_REQUEST': True,
+
+    'SECURITY': [
+        {
+            'BearerAuth': []
+        }
+    ],
+
+    'COMPONENTS': {
+        'securitySchemes': {
+            'BearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT'
+            }
+        }
+    }
+}
 
 SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
