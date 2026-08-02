@@ -201,7 +201,8 @@ class PredictionDetailView(APIView):
         },
     )
     def post(self, request, fixture_id):
-        force_refresh = request.data.get('force_refresh', False)
+        # force_refresh comes as a query param (as Swagger correctly shows)
+        force_refresh = request.query_params.get('force_refresh', 'false').lower() == 'true'
 
         try:
             result = get_prediction_for_single_fixture(

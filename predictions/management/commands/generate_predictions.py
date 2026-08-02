@@ -49,11 +49,18 @@ class Command(BaseCommand):
             default=False,
             help='Re-generate predictions even if they already exist for a fixture.'
         )
+        parser.add_argument(
+            '--limit',
+            type=int,
+            default=None,
+            help='Limit the number of fixtures processed. Useful for testing.'
+        )
 
     def handle(self, *args, **options):
         sport_filter = options['sport']
         days_ahead = options['days_ahead']
         force_refresh = options['force_refresh']
+        limit=options.get('limit')
 
         # Which sports to run for
         if sport_filter:
@@ -90,6 +97,7 @@ class Command(BaseCommand):
                     date_from=date_from,
                     date_to=date_to,
                     force_refresh=force_refresh,
+                    limit=limit
                 )
             except Exception as e:
                 self.stdout.write(

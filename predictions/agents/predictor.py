@@ -21,11 +21,14 @@ Key design decisions:
 """
 import os
 import json
+from urllib import response
 import anthropic
+from groq import Groq
 
 from ..models import Fixtures, Prediction
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+client1 = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """You are a sports prediction engine for a betting research platform.
 You will receive structured match statistics: recent form, scoring averages,
@@ -182,14 +185,29 @@ def predict_fixture(fixture: Fixtures, analysis_payload: dict) -> Prediction:
         f"{json.dumps(analysis_payload, indent=2)}"
     )
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=800,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    ''' to use antropic claude '''
 
-    raw_text = response.content[0].text
+    # response = client.messages.create(
+    #     model="claude-sonnet-4-6",
+    #     max_tokens=800,
+    #     system=SYSTEM_PROMPT,
+    #     messages=[{"role": "user", "content": user_message}],
+    # )
+
+    # raw_text = response.content[0].text
+
+    ''' to use groq llama '''
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",  # best free model on Groq
+        max_tokens=800,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_message}
+        ],
+        temperature=0.3,  # lower temperature = more consistent, structured output
+    )
+    raw_text = response.choices[0].message.content
     parsed = _parse_response(raw_text)
 
     # Validate the outcomes block before persisting anything
@@ -214,7 +232,12 @@ def predict_fixture(fixture: Fixtures, analysis_payload: dict) -> Prediction:
         outcomes=outcomes,
         confidence=confidence,
         reasoning=parsed.get("reasoning", ""),
-        model_used="claude-sonnet-4-6",
+
+        # to use groq llama
+        model_used="llama-3.3-70b-versatile",
+
+        # to use antropic claude 
+        # model_used="claude-sonnet-4-6",
     )
 
     # key_factors isn't a model field - stash on the instance so the
