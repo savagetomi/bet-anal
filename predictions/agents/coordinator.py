@@ -25,14 +25,15 @@ def get_predictions_for_sport(
     sport: str,
     date_from=None,
     date_to=None,
-    force_refresh: bool = False
+    force_refresh: bool = False,
+    limit: int = None        # ← add this
 ) -> list[dict]:
-    """
-    Full pipeline for all upcoming fixtures of one sport.
-    Called by the midnight scheduled job, not by user-facing endpoints.
-    Returns a list of result dicts (predictions + any per-fixture errors).
-    """
     fixtures = fetch_and_store_fixtures(sport, date_from, date_to)
+
+    # Limit for testing - avoids burning API credits on full fixture list
+    if limit:
+        fixtures = fixtures[:limit]
+
     stats_provider = get_provider_for(sport, prefer="api-sports")
     results = []
 
@@ -55,28 +56,20 @@ def get_prediction_for_single_fixture(
     fixture_id: str,
     force_refresh: bool = False
 ) -> dict:
-    """
-    Returns the prediction for one specific fixture.
-    If no prediction exists yet (midnight job hasn't run), raises
-    RuntimeError so the view can return a meaningful 404-style response.
-    """
     fixture = Fixtures.objects.get(id=fixture_id)
 
     if not force_refresh:
         existing = _get_existing_prediction(fixture)
         if existing:
             return _build_result(fixture, existing)
-
-    # No existing prediction and force_refresh=False means the midnight
-    # job hasn't run yet for this fixture. Don't generate on demand -
-    # tell the caller to try again after midnight.
-    if not force_refresh:
+        # No existing prediction and not forcing refresh - tell caller
+        # to wait for the midnight job
         raise RuntimeError(
             f"No prediction available yet for {fixture}. "
             f"Predictions are generated daily at midnight."
         )
 
-    # force_refresh=True: re-run the pipeline regardless of existing predictions
+    # force_refresh=True: re-run the pipeline regardless
     stats_provider = get_provider_for(fixture.sport, prefer="api-sports")
     result = _run_pipeline_for_fixture(fixture, stats_provider, fixture.sport)
 
