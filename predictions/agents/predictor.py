@@ -29,6 +29,12 @@ from ..models import Fixtures, Prediction
 
 client1 = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+_client = None
+def _get_client() -> Groq:
+   global _client
+   if _client is None:
+    _client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    return _client
 
 SYSTEM_PROMPT = """You are a sports prediction engine for a betting research platform.
 You will receive structured match statistics: recent form, scoring averages,
@@ -198,7 +204,7 @@ def predict_fixture(fixture: Fixtures, analysis_payload: dict) -> Prediction:
 
     ''' to use groq llama '''
 
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model="llama-3.3-70b-versatile",  # best free model on Groq
         max_tokens=800,
         messages=[
