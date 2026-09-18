@@ -132,11 +132,11 @@ SIMPLE_JWT = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.getenv("DB_NAME"),
-        'USER': os.environ.getenv("DB_USER"),
-        'PASSWORD': os.environ.getenv("DB_PASSWORD"),
-        'HOST': os.environ.getenv("DB_HOST"),
-        'PORT': os.environ.getenv("DB_PORT"),
+        'NAME': os.environ.get("DB_NAME"),
+        'USER': os.environ.get("DB_USER"),
+        'PASSWORD': os.environ.get("DB_PASSWORD"),
+        'HOST': os.environ.get("DB_HOST"),
+        'PORT': os.environ.get("DB_PORT"),
         'OPTIONS': {
             'sslmode': 'require',   # <--- MUST be present
         },
